@@ -1,0 +1,56 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  build-and-smoke-test:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Copy env example
+        run: cp .env.example .env
+
+      - name: Build Docker images
+        run: docker compose build
+
+      - name: Start services
+        run: docker compose up -d
+
+      - name: Wait for backend to be healthy
+        run: |
+          for i in {1..30}; do
+            if curl -f http://localhost:8080/api/note/list; then
+              echo "Backend is healthy!"
+              exit 0
+            fi
+            echo "Waiting for backend... attempt $i"
+            sleep 10
+          done
+          echo "Backend failed to become healthy"
+          docker compose logs
+          exit 1
+
+      - name: Smoke test - note list API
+        run: |
+          response=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/api/note/list)
+          if [ "$response" -eq 200 ]; then
+            echo "Smoke test passed! API returned 200"
+          else
+            echo "Smoke test failed! API returned $response"
+            docker compose logs
+            exit 1
+          fi
+
+      - name: Cleanup
+        if: always()
+        run: docker compose down -v
