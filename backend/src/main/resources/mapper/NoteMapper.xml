@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.xhs.mapper.NoteMapper">
+
+    <select id="findAll" resultType="com.xhs.entity.Note">
+        SELECT n.*, u.username, u.avatar,
+               (SELECT COUNT(*) FROM note_like WHERE note_id = n.id) as like_count,
+               (SELECT COUNT(*) FROM note_collect WHERE note_id = n.id) as collect_count,
+               (SELECT COUNT(*) FROM comment WHERE note_id = n.id) as comment_count
+        FROM note n
+        LEFT JOIN user u ON n.user_id = u.id
+        <where>
+            <if test="category != null and category != '全部'">
+                AND n.category = #{category}
+            </if>
+            <if test="keyword != null and keyword != ''">
+                AND (n.title LIKE CONCAT('%', #{keyword}, '%') OR n.content LIKE CONCAT('%', #{keyword}, '%'))
+            </if>
+        </where>
+        ORDER BY n.created_at DESC, n.id DESC
+        <if test="offset != null and limit != null">
+            LIMIT #{limit} OFFSET #{offset}
+        </if>
+    </select>
+
+    <select id="findById" resultType="com.xhs.entity.Note">
+        SELECT n.*, u.username, u.avatar,
+               (SELECT COUNT(*) FROM note_like WHERE note_id = n.id) as like_count,
+               (SELECT COUNT(*) FROM note_collect WHERE note_id = n.id) as collect_count,
+               (SELECT COUNT(*) FROM comment WHERE note_id = n.id) as comment_count
+        FROM note n
+        LEFT JOIN user u ON n.user_id = u.id
+        WHERE n.id = #{id}
+    </select>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO note (user_id, title, content, images, category)
+        VALUES (#{userId}, #{title}, #{content}, #{images}, #{category})
+    </insert>
+
+    <update id="update">
+        UPDATE note
+        <set>
+            <if test="title != null">title = #{title},</if>
+            <if test="content != null">content = #{content},</if>
+            <if test="images != null">images = #{images},</if>
+            <if test="category != null">category = #{category},</if>
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <!-- 点赞 -->
+    <insert id="like">
+        INSERT INTO note_like (user_id, note_id) VALUES (#{userId}, #{note_id})
+    </insert>
+    <delete id="unlike">
+        DELETE FROM note_like WHERE user_id = #{userId} AND note_id = #{note_id}
+    </delete>
+    <select id="isLiked" resultType="int">
+        SELECT COUNT(*) FROM note_like WHERE user_id = #{userId} AND note_id = #{note_id}
+    </select>
+
+    <!-- 收藏 -->
+    <insert id="collect">
+        INSERT INTO note_collect (user_id, note_id) VALUES (#{userId}, #{note_id})
+    </insert>
+    <delete id="uncollect">
+        DELETE FROM note_collect WHERE user_id = #{userId} AND note_id = #{note_id}
+    </delete>
+    <select id="isCollected" resultType="int">
+        SELECT COUNT(*) FROM note_collect WHERE user_id = #{userId} AND note_id = #{note_id}
+    </select>
+
+    <!-- 评论 -->
+    <select id="findCommentsByNoteId" resultType="com.xhs.entity.Comment">
+        SELECT c.*, u.username, u.avatar 
+        FROM comment c
+        LEFT JOIN user u ON c.user_id = u.id
+        WHERE c.note_id = #{noteId}
+        ORDER BY c.created_at DESC
+    </select>
+    <insert id="insertComment" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO comment (user_id, note_id, content)
+        VALUES (#{userId}, #{noteId}, #{content})
+    </insert>
+
+    <!-- 用户相关查询 -->
+    <select id="findPublishedByUser" resultType="com.xhs.entity.Note">
+        SELECT n.*, u.username, u.avatar,
+               (SELECT COUNT(*) FROM note_like WHERE note_id = n.id) as like_count,
+               (SELECT COUNT(*) FROM note_collect WHERE note_id = n.id) as collect_count,
+               (SELECT COUNT(*) FROM comment WHERE note_id = n.id) as comment_count
+        FROM note n
+        LEFT JOIN user u ON n.user_id = u.id
+        WHERE n.user_id = #{userId}
+        ORDER BY n.created_at DESC
+    </select>
+
+    <select id="findLikedByUser" resultType="com.xhs.entity.Note">
+        SELECT n.*, u.username, u.avatar,
+               (SELECT COUNT(*) FROM note_like WHERE note_id = n.id) as like_count,
+               (SELECT COUNT(*) FROM note_collect WHERE note_id = n.id) as collect_count,
+               (SELECT COUNT(*) FROM comment WHERE note_id = n.id) as comment_count
+        FROM note n
+        INNER JOIN note_like nl ON n.id = nl.note_id
+        LEFT JOIN user u ON n.user_id = u.id
+        WHERE nl.user_id = #{userId}
+        ORDER BY nl.created_at DESC
+    </select>
+
+    <select id="findCollectedByUser" resultType="com.xhs.entity.Note">
+        SELECT n.*, u.username, u.avatar,
+               (SELECT COUNT(*) FROM note_like WHERE note_id = n.id) as like_count,
+               (SELECT COUNT(*) FROM note_collect WHERE note_id = n.id) as collect_count,
+               (SELECT COUNT(*) FROM comment WHERE note_id = n.id) as comment_count
+        FROM note n
+        INNER JOIN note_collect nc ON n.id = nc.note_id
+        LEFT JOIN user u ON n.user_id = u.id
+        WHERE nc.user_id = #{userId}
+        ORDER BY nc.created_at DESC
+    </select>
+
+</mapper>
