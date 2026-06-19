@@ -4,8 +4,8 @@ services:
   db:
     image: mysql:8.0
     environment:
-      MYSQL_ROOT_PASSWORD: root
-      MYSQL_DATABASE: xiaohongshu
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-xiaohongshu}
     ports:
       - "3306:3306"
     volumes:
@@ -26,7 +26,8 @@ services:
     volumes:
       - ./uploads:/app/uploads
     environment:
-      SPRING_DATASOURCE_URL: jdbc:mysql://db:3306/xiaohongshu?useUnicode=true&characterEncoding=utf-8&useSSL=false&serverTimezone=GMT%2B8&allowPublicKeyRetrieval=true
+      SPRING_DATASOURCE_URL: jdbc:mysql://db:3306/${MYSQL_DATABASE:-xiaohongshu}?useUnicode=true&characterEncoding=utf-8&useSSL=false&serverTimezone=GMT%2B8&allowPublicKeyRetrieval=true
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root}
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/api/note/list"]
       interval: 30s
