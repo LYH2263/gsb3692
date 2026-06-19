@@ -1,0 +1,37 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - '**'
+
+jobs:
+  build-and-smoke-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Prepare environment
+        run: cp .env.example .env
+
+      - name: Build images and start services
+        run: docker compose up -d --build --wait
+        timeout-minutes: 15
+
+      - name: Smoke test - GET /api/note/list
+        run: |
+          echo ">>> Curling http://localhost:8080/api/note/list"
+          response=$(curl -fsS http://localhost:8080/api/note/list)
+          echo ">>> Response:"
+          echo "$response"
+          echo ">>> Smoke test passed."
+
+      - name: Dump service logs on failure
+        if: failure()
+        run: docker compose logs --tail=200
+
+      - name: Tear down services
+        if: always()
+        run: docker compose down -v
